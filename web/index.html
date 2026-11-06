@@ -5,13 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Chiz va Top</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div id="screen-start" class="screen">
-  <h1>Chiz va Top</h1>
-  <p class="sub">Biri chizadi, biri topadi. Ikki kishilik.</p>
+  <h1>Chiz va Top<span class="dot">.</span></h1>
+  <p class="sub">Biri chizadi, biri topadi. Keyin navbat almashadi.</p>
   <div class="langs" id="langs">
     <button class="lang on" data-lang="uz">O'zbekcha</button>
     <button class="lang" data-lang="en">English</button>
@@ -22,8 +25,8 @@
 
 <div id="screen-wait" class="screen hidden">
   <h2>Do'stingizni kuting</h2>
-  <p class="sub">Havolani yuboring — u bosganda o'yin boshlanadi.</p>
-  <div class="code" id="room-code">----</div>
+  <p class="sub">Havolani yuboring — u bosganda o'yin o'zi boshlanadi.</p>
+  <div class="code sketch" id="room-code">····</div>
   <button id="btn-share" class="primary">Do'stni chaqirish</button>
   <button id="btn-copy" class="ghost">Havolani nusxalash</button>
 </div>
@@ -32,22 +35,28 @@
   <header>
     <div class="score" id="score-you">0</div>
     <div class="middle">
-      <div class="round" id="round-label">1 / 6</div>
+      <div class="round" id="round-label">raund 1 / 6</div>
       <div class="timer" id="timer">60</div>
     </div>
     <div class="score" id="score-them">0</div>
   </header>
 
-  <div class="wordbar" id="wordbar">...</div>
+  <div class="wordbar" id="wordbar">·</div>
 
-  <canvas id="canvas"></canvas>
+  <div class="sheet"><canvas id="canvas"></canvas></div>
 
   <div class="tools hidden" id="tools">
-    <button class="swatch on" data-color="#111827" style="background:#111827"></button>
-    <button class="swatch" data-color="#ef4444" style="background:#ef4444"></button>
-    <button class="swatch" data-color="#3b82f6" style="background:#3b82f6"></button>
-    <button class="swatch" data-color="#22c55e" style="background:#22c55e"></button>
-    <button class="swatch" data-color="#f59e0b" style="background:#f59e0b"></button>
+    <button class="swatch on" data-color="#302b24" style="background:#302b24"></button>
+    <button class="swatch" data-color="#d2503c" style="background:#d2503c"></button>
+    <button class="swatch" data-color="#2f6f9e" style="background:#2f6f9e"></button>
+    <button class="swatch" data-color="#3f7d55" style="background:#3f7d55"></button>
+    <button class="swatch" data-color="#d9a44f" style="background:#d9a44f"></button>
+    <div class="sizes">
+      <button class="size" data-width="2"><i style="width:5px;height:5px"></i></button>
+      <button class="size on" data-width="4"><i style="width:9px;height:9px"></i></button>
+      <button class="size" data-width="9"><i style="width:16px;height:16px"></i></button>
+    </div>
+    <button id="btn-eraser" class="tool">O'chirg'ich</button>
     <button id="btn-undo" class="tool">Orqaga</button>
     <button id="btn-clear" class="tool">Tozalash</button>
   </div>
@@ -64,7 +73,15 @@
 <div id="screen-end" class="screen hidden">
   <h2 id="end-title">O'yin tugadi</h2>
   <div class="final" id="end-scores"></div>
-  <button id="btn-replay" class="primary">Qayta o'ynash</button>
+  <button id="btn-replay" class="primary">Yana bir marta</button>
+</div>
+
+<div id="curtain" class="curtain hidden">
+  <div class="card sketch sketch-2">
+    <div class="label">so'z edi</div>
+    <div class="word" id="curtain-word"></div>
+    <div class="who" id="curtain-who"></div>
+  </div>
 </div>
 
 <div id="toast" class="toast hidden"></div>

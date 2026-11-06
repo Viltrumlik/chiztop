@@ -288,3 +288,24 @@ def test_a_stroke_without_points_is_rejected():
     assert not r.add_stroke(r.drawer_id, {"id": "a", "p": []})
     assert not r.add_stroke(r.drawer_id, "nonsense")
     assert r.strokes == []
+
+
+# -- raundlar orasidagi nafas ---------------------------------------------
+
+def test_the_next_round_does_not_start_immediately():
+    r = room()
+    r.start_round(0.0)
+    r.submit_guess(r.guesser_id, r.word, now=5.0)
+    assert r.phase == ROUND_END
+    assert not r.due_for_next_round(now=5.0)
+    assert not r.due_for_next_round(now=5.0 + rooms.ROUND_GAP - 0.1)
+    assert r.due_for_next_round(now=5.0 + rooms.ROUND_GAP)
+
+
+def test_the_last_round_has_no_next_round_waiting():
+    r = room(total_rounds=1)
+    r.start_round(0.0)
+    r.submit_guess(r.guesser_id, r.word, now=1.0)
+    assert r.phase == GAME_END
+    assert r.next_round_at is None
+    assert not r.due_for_next_round(now=999.0)

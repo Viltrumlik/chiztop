@@ -13,15 +13,32 @@ const $ = (id) => document.getElementById(id);
 
 const state = {
   ws: null, code: null, you: null, drawer: null, phase: "lobby",
-  lang: "uz", strokes: [], color: "#111827", width: 4,
-  retries: 0, closing: false,
+  lang: "uz", strokes: [], color: "#302b24", penColor: "#302b24", width: 4,
+  eraser: false, retries: 0, closing: false,
 };
+
+const PAPER_INK = "#fffdf7";   // o'chirg'ich = qog'oz rangi bilan chizish
 
 /* ---------------------------------------------------------------- Telegram */
 
 if (tg) {
   tg.ready();
   tg.expand();
+  // Telegram'dan faqat yorug'/qorong'i tanlovini olamiz, ranglarini emas --
+  // daftar palitrasi o'yinning o'z ko'rinishi.
+  //
+  // Diqqat: telegram-web-app.js oddiy brauzerda ham yuklanadi va o'shanda
+  // colorScheme doim "light" deydi. Unga ishonsak, brauzerning o'z qorong'i
+  // rejimini bosib qo'yamiz. Shuning uchun avval haqiqatan Telegram ichida
+  // ekanimizni tekshiramiz: tashqarida platform "unknown" bo'ladi.
+  const inTelegram = !!tg.platform && tg.platform !== "unknown";
+  const applyTheme = () => {
+    if (inTelegram && tg.colorScheme) {
+      document.documentElement.dataset.theme = tg.colorScheme;
+    }
+  };
+  applyTheme();
+  if (inTelegram && tg.onEvent) tg.onEvent("themeChanged", applyTheme);
 }
 
 function initData() {
@@ -136,13 +153,21 @@ function handle(msg) {
       break;
 
     case "guess":
-      if (msg.correct) logLine("Topildi: " + msg.text, "ok");
-      else if (msg.close && msg.by === state.you) logLine(msg.text + " - yaqin!", "near");
-      else if (msg.by !== state.you) logLine(msg.text);
+      if (msg.correct) {
+        logLine("Topildi: " + msg.text, "ok");
+      } else if (msg.by === state.you) {
+        if (msg.close) logLine(msg.text + " \u2014 yaqin!", "near");
+        const input = $("guess");
+        input.classList.remove("wrong");
+        void input.offsetWidth;
+        input.classList.add("wrong");
+      } else {
+        logLine(msg.text);
+      }
       break;
 
     case "round_end":
-      logLine("So'z: " + msg.word, "ok");
+      showCurtain(msg);
       break;
 
     case "error":
@@ -178,22 +203,45 @@ function applyState(s) {
   $("guessbar").classList.toggle("hidden", youDraw);
   $("canvas").style.cursor = youDraw ? "crosshair" : "default";
 
-  $("round-label").textContent = s.round + " / " + s.total_rounds;
-  $("score-you").textContent = s.scores[s.you] || 0;
+  $("round-label").textContent = "raund " + s.round + " / " + s.total_rounds;
   const them = s.players.filter((p) => p.id !== s.you)[0];
-  $("score-them").textContent = them ? (s.scores[them.id] || 0) : 0;
+  setScore("score-you", s.scores[s.you] || 0);
+  setScore("score-them", them ? (s.scores[them.id] || 0) : 0);
   setTimer(s.remaining);
 
-  if (s.phase === "round_end") {
-    $("wordbar").textContent = s.word;
-  } else if (youDraw) {
-    $("wordbar").textContent = s.word;
-  } else {
-    $("wordbar").textContent = s.mask || "";
-  }
+  const bar = $("wordbar");
+  const showWord = s.phase === "round_end" || youDraw;
+  bar.textContent = showWord ? s.word : (s.mask || "");
+  bar.classList.toggle("secret", youDraw && s.phase === "drawing");
 
   if (them && !them.connected) toast(them.name + " uzildi...");
 }
+
+function setScore(id, value) {
+  const el = $(id);
+  const before = parseInt(el.textContent, 10) || 0;
+  el.textContent = value;
+  if (value > before) {
+    el.classList.remove("bump");
+    void el.offsetWidth;          // animatsiyani qaytadan boshlash uchun
+    el.classList.add("bump");
+  }
+}
+
+function showCurtain(msg) {
+  $("curtain-word").textContent = msg.word || "";
+  const who = msg.guessed_by;
+  $("curtain-who").innerHTML = "";
+  const line = document.createElement("span");
+  if (!who) line.textContent = "Hech kim topmadi";
+  else if (who === state.you) { line.innerHTML = "<b>Siz topdingiz</b>"; }
+  else line.textContent = "Raqibingiz topdi";
+  $("curtain-who").append(line);
+  $("curtain").classList.remove("hidden");
+  clearTimeout(curtainTimer);
+  curtainTimer = setTimeout(() => $("curtain").classList.add("hidden"), 2600);
+}
+let curtainTimer = null;
 
 function setTimer(seconds) {
   const v = Math.max(0, Math.ceil(seconds || 0));
@@ -237,7 +285,7 @@ function sizeCanvas() {
 function redraw() {
   const rect = canvas.getBoundingClientRect();
   ctx.clearRect(0, 0, rect.width, rect.height);
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = PAPER_INK;
   ctx.fillRect(0, 0, rect.width, rect.height);
   state.strokes.forEach(drawStroke);
 }
@@ -283,7 +331,8 @@ canvas.addEventListener("pointerdown", (ev) => {
   canvas.setPointerCapture(ev.pointerId);
   currentId += 1;
   sentUpTo = 0;
-  current = { id: state.you + ":" + currentId, c: state.color, w: state.width, p: [point(ev)] };
+  const width = state.eraser ? state.width * 3 : state.width;
+  current = { id: state.you + ":" + currentId, c: state.color, w: width, p: [point(ev)] };
   drawStroke(current);
 });
 
@@ -330,13 +379,30 @@ function undoLast() {
 
 /* ------------------------------------------------------------- boshqaruv */
 
+function setEraser(on) {
+  state.eraser = on;
+  $("btn-eraser").classList.toggle("on", on);
+  state.color = on ? PAPER_INK : state.penColor;
+}
+
 document.querySelectorAll(".swatch").forEach((b) => {
   b.addEventListener("click", () => {
     document.querySelectorAll(".swatch").forEach((x) => x.classList.remove("on"));
     b.classList.add("on");
-    state.color = b.dataset.color;
+    state.penColor = b.dataset.color;
+    setEraser(false);
   });
 });
+
+document.querySelectorAll(".size").forEach((b) => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".size").forEach((x) => x.classList.remove("on"));
+    b.classList.add("on");
+    state.width = parseInt(b.dataset.width, 10);
+  });
+});
+
+$("btn-eraser").addEventListener("click", () => setEraser(!state.eraser));
 
 document.querySelectorAll(".lang").forEach((b) => {
   b.addEventListener("click", () => {

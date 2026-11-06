@@ -16,6 +16,7 @@ LOBBY, DRAWING, ROUND_END, GAME_END = "lobby", "drawing", "round_end", "game_end
 MAX_PLAYERS = 2
 TOTAL_ROUNDS = 6
 ROUND_SECONDS = 60
+ROUND_GAP = 3            # raundlar orasidagi nafas: natijani ko'rish uchun
 GRACE_SECONDS = 30          # uzilgan o'yinchi joyi shuncha ushlab turiladi
 DRAWER_POINTS = 50          # so'zi topilsa chizuvchiga
 MIN_GUESS_POINTS = 20
@@ -119,6 +120,7 @@ class Room:
         self.used_words = set()
         self.strokes = []
         self.deadline = None
+        self.next_round_at = None
         self.winner_id = None
 
     # -- o'yinchilar ----------------------------------------------------
@@ -187,6 +189,7 @@ class Room:
         self.strokes = []
         self.phase = DRAWING
         self.deadline = now + self.duration
+        self.next_round_at = None
         return {"round": self.round_no, "drawer": self.drawer_id}
 
     def remaining(self, now):
@@ -244,8 +247,17 @@ class Room:
         out = {"round_end": True, "word": self.word, "guessed_by": guessed_by,
                "scores": dict(self.scores)}
         if self.round_no >= self.total_rounds:
+            self.next_round_at = None
             out.update(self.end_game())
+        else:
+            # Keyingi raund darrov boshlanmaydi: o'yinchilar so'zni va kim
+            # ball olganini ko'rib ulgursin.
+            self.next_round_at = now + ROUND_GAP
         return out
+
+    def due_for_next_round(self, now):
+        return (self.phase == ROUND_END and self.next_round_at is not None
+                and now >= self.next_round_at)
 
     def end_game(self):
         self.phase = GAME_END
@@ -265,6 +277,7 @@ class Room:
         self.used_words = set()
         self.strokes = []
         self.deadline = None
+        self.next_round_at = None
         self.winner_id = None
         self.scores = {p: 0 for p in self.players}
 

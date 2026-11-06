@@ -77,14 +77,14 @@ async def ticker():
                     ROOMS.pop(code, None)
                     SOCKETS.pop(code, None)
                     continue
+                if room.due_for_next_round(now):
+                    room.start_round(now)
+                    await broadcast_state(room, now)
+                    continue
                 changed = room.tick(now)
                 if changed.get("round_end"):
                     await broadcast(room, {"type": "round_end", **changed})
                     await broadcast_state(room, now)
-                    if not changed.get("game_end"):
-                        await asyncio.sleep(0)  # holat yetib borsin
-                        room.start_round(time.time())
-                        await broadcast_state(room)
                 elif changed.get("mask"):
                     await broadcast(room, {"type": "mask", "mask": changed["mask"]},
                                     skip=room.drawer_id)
@@ -209,11 +209,9 @@ async def handle(room, user_id, message):
                                "correct": result["correct"],
                                "close": result.get("close", False)})
         if result.get("round_end"):
+            # Keyingi raundni taymer boshlaydi, ROUND_GAP o'tgach.
             await broadcast(room, {"type": "round_end", **result})
             await broadcast_state(room)
-            if not result.get("game_end"):
-                room.start_round(time.time())
-                await broadcast_state(room)
 
     elif kind == "replay":
         if room.phase == rooms.GAME_END:
