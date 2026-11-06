@@ -84,3 +84,7 @@ piksel yuborilsa rasm raqibda siljib ketadi.
 Bepul tariflar jimlikdan keyin serverni uxlatadi. Do'stingiz havolani
 bosganda 50 soniya kutishi o'yinni o'ldiradi. Uxlamaydigan kichik VPS
 (oyiga ~$4–5) bu o'yin uchun ishonchliroq.
+
+## Litsenziya
+
+[MIT](LICENSE) © Alisher Muhammadaliyev ([@Viltrumlik](https://github.com/Viltrumlik))
