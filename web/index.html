@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Chiz va Top</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="screen-start" class="screen">
+  <h1>Chiz va Top</h1>
+  <p class="sub">Biri chizadi, biri topadi. Ikki kishilik.</p>
+  <div class="langs" id="langs">
+    <button class="lang on" data-lang="uz">O'zbekcha</button>
+    <button class="lang" data-lang="en">English</button>
+    <button class="lang" data-lang="ru">Русский</button>
+  </div>
+  <button id="btn-new" class="primary">Yangi o'yin</button>
+</div>
+
+<div id="screen-wait" class="screen hidden">
+  <h2>Do'stingizni kuting</h2>
+  <p class="sub">Havolani yuboring — u bosganda o'yin boshlanadi.</p>
+  <div class="code" id="room-code">----</div>
+  <button id="btn-share" class="primary">Do'stni chaqirish</button>
+  <button id="btn-copy" class="ghost">Havolani nusxalash</button>
+</div>
+
+<div id="screen-game" class="screen hidden">
+  <header>
+    <div class="score" id="score-you">0</div>
+    <div class="middle">
+      <div class="round" id="round-label">1 / 6</div>
+      <div class="timer" id="timer">60</div>
+    </div>
+    <div class="score" id="score-them">0</div>
+  </header>
+
+  <div class="wordbar" id="wordbar">...</div>
+
+  <canvas id="canvas"></canvas>
+
+  <div class="tools hidden" id="tools">
+    <button class="swatch on" data-color="#111827" style="background:#111827"></button>
+    <button class="swatch" data-color="#ef4444" style="background:#ef4444"></button>
+    <button class="swatch" data-color="#3b82f6" style="background:#3b82f6"></button>
+    <button class="swatch" data-color="#22c55e" style="background:#22c55e"></button>
+    <button class="swatch" data-color="#f59e0b" style="background:#f59e0b"></button>
+    <button id="btn-undo" class="tool">Orqaga</button>
+    <button id="btn-clear" class="tool">Tozalash</button>
+  </div>
+
+  <div class="guessbar hidden" id="guessbar">
+    <input id="guess" type="text" autocomplete="off" autocapitalize="off"
+           autocorrect="off" spellcheck="false" placeholder="Taxminingiz...">
+    <button id="btn-guess">Ayt</button>
+  </div>
+
+  <div class="log" id="log"></div>
+</div>
+
+<div id="screen-end" class="screen hidden">
+  <h2 id="end-title">O'yin tugadi</h2>
+  <div class="final" id="end-scores"></div>
+  <button id="btn-replay" class="primary">Qayta o'ynash</button>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

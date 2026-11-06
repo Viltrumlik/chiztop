@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "chiztop",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "CHIZTOP_DEV=1 BOT_TOKEN=dev-only .venv/bin/python -m uvicorn server.main:app --port 8077"],
+      "port": 8077
+    }
+  ]
+}
