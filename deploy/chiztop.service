@@ -1,0 +1,32 @@
+# /etc/systemd/system/chiztop.service
+
+[Unit]
+Description=Chiz va Top
+After=network.target
+
+[Service]
+Type=exec
+User=chiztop
+WorkingDirectory=/opt/chiztop
+EnvironmentFile=/etc/chiztop.env
+
+# DIQQAT: --workers 1 shart. Xonalar jarayon xotirasida yashaydi;
+# ikkinchi worker ularni ko'rmaydi va ikki o'yinchi turli xonalarga
+# tushib qoladi. Bu loyihani kengaytirib bo'lmaydi -- faqat kattaroq
+# mashinaga ko'chiriladi.
+ExecStart=/opt/chiztop/.venv/bin/python -m uvicorn server.main:app \
+    --host 127.0.0.1 --port 8077 --workers 1 \
+    --proxy-headers --forwarded-allow-ips=127.0.0.1
+
+Restart=always
+RestartSec=3
+
+# O'yin serveri serverdagi boshqa narsalarga tegmasin.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/chiztop
+
+[Install]
+WantedBy=multi-user.target
