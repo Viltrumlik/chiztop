@@ -86,7 +86,11 @@ function logLine(text, cls) {
 
 function connect(room) {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  const ws = new WebSocket(proto + "//" + location.host + "/ws");
+  // Yo'lga nisbatan: ildizda "/ws", yo'l ostida esa "/chiz/ws". Shunda
+  // o'yinni mavjud domenning bir qismi sifatida ham qo'yish mumkin --
+  // yangi subdomen va yangi sertifikat kerak bo'lmaydi.
+  const base = location.pathname.replace(/[^/]*$/, "");
+  const ws = new WebSocket(proto + "//" + location.host + base + "ws");
   state.ws = ws;
 
   ws.onopen = () => {
