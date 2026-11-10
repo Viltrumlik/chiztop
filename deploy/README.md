@@ -10,7 +10,7 @@ Server: `mastersat.uz` turgan mashina, `65.109.100.104`, Ubuntu 24.04.
 - kod, virtual muhit, bog'liqliklar
 - `/etc/chiztop.env` (chmod 600) — **token hali bo'sh**
 - `chiztop.service` — ishlayapti, avtoyuklanishga qo'yilgan
-- nginx sayti `chiz.mastersat.uz` uchun (hozircha faqat HTTP)
+- nginx sayti `chiz.viltrumlik.uz` uchun (hozircha faqat HTTP)
 - `http://127.0.0.1:8077/health` javob beryapti
 
 Mavjud saytlar tekshirildi va buzilmagan: mastersat.uz va uning barcha
@@ -26,7 +26,7 @@ mavjud saytlarga tegilmaydi.
 
 ## 0. Sizdan talab qilinadigan ikki narsa
 
-**DNS yozuvi.** `chiz.mastersat.uz` uchun A yozuvi `65.109.100.104` ga
+**DNS yozuvi.** `chiz.viltrumlik.uz` uchun A yozuvi `65.109.100.104` ga
 yo'naltirilishi kerak. Buni domen boshqaruv panelingizda o'zingiz
 qilasiz — DNS tarqalgunicha certbot sertifikat ololmaydi.
 
@@ -85,17 +85,22 @@ sudo cp deploy/nginx.conf /etc/nginx/sites-available/chiztop
 sudo ln -s /etc/nginx/sites-available/chiztop /etc/nginx/sites-enabled/
 sudo nginx -t                        # mavjud saytlarni buzmaganini tekshiradi
 sudo systemctl reload nginx
-sudo certbot --nginx -d chiz.mastersat.uz
+sudo certbot --nginx -d chiz.viltrumlik.uz
 ```
 
 `nginx -t` xato bersa, symlink'ni o'chiring va qayta yuklang — boshqa
 saytlar ishlashda davom etadi.
 
+Serverda `viltrumlik-certs.timer` ishlab turibdi: u har 15 daqiqada DNS'ni
+tekshiradi va domen hal bo'lishi bilan sertifikatni o'zi oladi, keyin o'zini
+o'chiradi. Ya'ni yuqoridagi `certbot` qatorini qo'lda ishlatish shart emas —
+holatni `tail /var/log/viltrumlik-certs.log` orqali ko'rasiz.
+
 ## 7. Telegram
 
 1. [@BotFather](https://t.me/BotFather) → `/newbot` → tokenni
    `/etc/chiztop.env` ga qo'ying
-2. `/newapp` → URL: `https://chiz.mastersat.uz`
+2. `/newapp` → URL: `https://chiz.viltrumlik.uz`
 3. `web/app.js` dagi `APP_LINK` ni to'ldiring:
    ```js
    const APP_LINK = "https://t.me/sizning_bot/play";
@@ -105,7 +110,7 @@ saytlar ishlashda davom etadi.
 ## 8. Tekshirish
 
 ```bash
-curl -sf https://chiz.mastersat.uz/health
+curl -sf https://chiz.viltrumlik.uz/health
 ```
 
 Keyin botdan mini-appni oching, "Yangi o'yin" bosing va havolani
@@ -145,7 +150,7 @@ chiz    A    65.109.100.104
 Tarqalganini tekshiring:
 
 ```bash
-dig +short chiz.mastersat.uz
+dig +short chiz.viltrumlik.uz
 ```
 
 ### 2. Bot tokeni
@@ -163,14 +168,14 @@ har bir ulanish imzo tekshiruvida rad etiladi.
 ### 3. Sertifikat (DNS tarqalgandan keyin)
 
 ```bash
-ssh root@65.109.100.104 'certbot --nginx -d chiz.mastersat.uz'
+ssh root@65.109.100.104 'certbot --nginx -d chiz.viltrumlik.uz'
 ```
 
 Certbot nginx konfiguratsiyasiga TLS blokini o'zi qo'shadi.
 
 ### 4. Mini-appni ulash
 
-@BotFather → `/newapp` → URL: `https://chiz.mastersat.uz`
+@BotFather → `/newapp` → URL: `https://chiz.viltrumlik.uz`
 
 Keyin `web/app.js` dagi `APP_LINK` ni to'ldiring va qayta yuboring:
 
