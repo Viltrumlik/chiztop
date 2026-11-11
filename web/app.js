@@ -24,6 +24,14 @@ const PAPER_INK = "#fffdf7";   // o'chirg'ich = qog'oz rangi bilan chizish
 if (tg) {
   tg.ready();
   tg.expand();
+  // Telegram vertikal suzishni "ilovani yig'ish" deb o'qiydi. Chizish
+  // ilovasida bu halokatli: pastga qarab chizsangiz harakat o'yinga emas,
+  // Telegram'ga ketadi. CSS'dagi touch-action buni to'xtata olmaydi --
+  // gesture brauzerda emas, Telegram qobig'ida ushlanadi. 7.7+ da o'chiriladi.
+  if (tg.isVersionAtLeast && tg.isVersionAtLeast("7.7") &&
+      typeof tg.disableVerticalSwipes === "function") {
+    tg.disableVerticalSwipes();
+  }
   // Telegram'dan faqat yorug'/qorong'i tanlovini olamiz, ranglarini emas --
   // daftar palitrasi o'yinning o'z ko'rinishi.
   //
@@ -39,6 +47,13 @@ if (tg) {
   };
   applyTheme();
   if (inTelegram && tg.onEvent) tg.onEvent("themeChanged", applyTheme);
+  // Telegram webview'da `resize` ishonchsiz: ilova yoyilganda yoki klaviatura
+  // ochilganda o'rniga shu hodisa keladi. Canvas o'lchamini unga ham bog'laymiz.
+  if (inTelegram && tg.onEvent) {
+    tg.onEvent("viewportChanged", () => {
+      if (!$("screen-game").classList.contains("hidden")) sizeCanvas();
+    });
+  }
 }
 
 function initData() {
@@ -63,6 +78,11 @@ function show(name) {
   ["start", "wait", "game", "end"].forEach((s) => {
     $("screen-" + s).classList.toggle("hidden", s !== name);
   });
+  // Yashirin element nol o'lchamli, shuning uchun canvas faqat ekran
+  // ko'ringandan KEYIN o'lchanadi. Bo'lmasa backing store 0x0 bo'lib qoladi
+  // va chizilgan hamma narsa yo'qqa ketadi -- `resize` esa ichki div'ning
+  // display'i o'zgarganda otilmaydi, ya'ni o'zi hech qachon tuzalmaydi.
+  if (name === "game") sizeCanvas();
 }
 
 let toastTimer = null;
