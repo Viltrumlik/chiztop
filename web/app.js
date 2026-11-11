@@ -6,7 +6,7 @@
  */
 
 // @BotFather da bot va mini-app yaratgach shuni to'ldiring:
-const APP_LINK = "https://t.me/YOUR_BOT/play";
+const APP_LINK = "https://t.me/chiztop_bot/play";
 
 const tg = window.Telegram && window.Telegram.WebApp;
 const $ = (id) => document.getElementById(id);
