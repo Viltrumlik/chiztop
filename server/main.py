@@ -13,7 +13,7 @@ import urllib.request
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import rooms, words
@@ -183,6 +183,30 @@ async def ticker():
 
 
 # -- statik fayllar -------------------------------------------------------
+
+def _stamped_index():
+    """index.html ni o'qib, app.js va style.css ga versiya qo'shadi.
+
+    Bularsiz qaytib kelgan o'yinchi eski fayllarni keshdan oladi va yangi
+    tuzatishlarni ko'rmaydi. Yomoni -- bu jimgina sodir bo'ladi: o'yin
+    ochiladi, lekin eskicha ishlaydi. Versiya fayl o'zgarganda almashadi,
+    ya'ni deploy'dan keyin brauzer o'zi yangisini so'raydi.
+    """
+    with open(os.path.join(WEB, "index.html"), encoding="utf-8") as f:
+        html = f.read()
+    for asset in ("app.js", "style.css"):
+        stamp = int(os.path.getmtime(os.path.join(WEB, asset)))
+        html = html.replace('"%s"' % asset, '"%s?v=%d"' % (asset, stamp))
+    return html
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    # Sahifaning o'zi keshlanmaydi, aks holda ichidagi yangi versiya
+    # raqamlari ham eski bo'lib qolardi.
+    return HTMLResponse(_stamped_index(),
+                        headers={"Cache-Control": "no-cache"})
+
 
 @app.get("/health")
 async def health():
