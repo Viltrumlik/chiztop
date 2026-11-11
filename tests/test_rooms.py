@@ -309,3 +309,68 @@ def test_the_last_round_has_no_next_round_waiting():
     assert r.phase == GAME_END
     assert r.next_round_at is None
     assert not r.due_for_next_round(now=999.0)
+
+
+# -- maslahat -------------------------------------------------------------
+#
+# Maslahat ataylab tor oyna bilan cheklangan: raund boshida harf ochilsa,
+# chizuvchi rasmni tugatmasdan so'z ma'lum bo'lib qolardi.
+
+def started():
+    r = room()
+    r.start_round(0)
+    return r
+
+
+def test_no_hint_at_the_start_of_the_round():
+    r = started()
+    assert r.request_hint(r.guesser_id, 0) is None
+
+
+def test_hint_opens_only_in_the_last_seconds():
+    r = started()
+    just_before = rooms.ROUND_SECONDS - rooms.HINT_WINDOW - 1
+    assert r.request_hint(r.guesser_id, just_before) is None
+    assert r.request_hint(r.guesser_id, rooms.ROUND_SECONDS - 1) is not None
+
+
+def test_the_drawer_cannot_ask_for_a_hint():
+    r = started()
+    late = rooms.ROUND_SECONDS - 1
+    assert r.request_hint(r.drawer_id, late) is None
+    assert r.hints_used == 0
+
+
+def test_a_hint_reveals_exactly_one_more_letter():
+    r = started()
+    late = rooms.ROUND_SECONDS - 1
+    before = len(r.revealed)
+    assert r.request_hint(r.guesser_id, late) is not None
+    assert len(r.revealed) == before + 1
+    assert r.hints_used == 1
+
+
+def test_hints_never_uncover_the_whole_word():
+    r = started()
+    late = rooms.ROUND_SECONDS - 1
+    for _ in range(40):                      # tinmay so'rayveramiz
+        r.request_hint(r.guesser_id, late)
+    letters = [i for i, ch in enumerate(r.word) if ch.isalnum()]
+    hidden = [i for i in letters if i not in r.revealed]
+    assert len(hidden) >= rooms.HINT_KEEP_HIDDEN
+    assert "_" in r.masked()
+
+
+def test_hint_is_refused_once_the_round_is_over():
+    r = started()
+    r.end_round(rooms.ROUND_SECONDS, guessed_by=None)
+    assert r.request_hint(r.guesser_id, rooms.ROUND_SECONDS) is None
+
+
+def test_hints_used_resets_each_round():
+    r = started()
+    r.request_hint(r.guesser_id, rooms.ROUND_SECONDS - 1)
+    assert r.hints_used == 1
+    r.end_round(rooms.ROUND_SECONDS, guessed_by=None)
+    r.start_round(rooms.ROUND_SECONDS + rooms.ROUND_GAP)
+    assert r.hints_used == 0

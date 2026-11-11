@@ -56,6 +56,13 @@
       <button class="size on" data-width="4"><i style="width:9px;height:9px"></i></button>
       <button class="size" data-width="9"><i style="width:16px;height:16px"></i></button>
     </div>
+    <div class="shapes">
+      <button class="shape on" data-shape="" title="Erkin chizish">✎</button>
+      <button class="shape" data-shape="line" title="Chiziq">╱</button>
+      <button class="shape" data-shape="rect" title="To'rtburchak">▭</button>
+      <button class="shape" data-shape="circle" title="Doira">◯</button>
+      <button class="shape" data-shape="tri" title="Uchburchak">△</button>
+    </div>
     <button id="btn-eraser" class="tool">O'chirg'ich</button>
     <button id="btn-undo" class="tool">Orqaga</button>
     <button id="btn-clear" class="tool">Tozalash</button>
@@ -65,6 +72,8 @@
     <input id="guess" type="text" autocomplete="off" autocapitalize="off"
            autocorrect="off" spellcheck="false" placeholder="Taxminingiz...">
     <button id="btn-guess">Ayt</button>
+    <!-- Faqat oxirgi 10 soniyada ko'rinadi, aks holda o'yin oson bo'lib qoladi -->
+    <button id="btn-hint" class="hint hidden" title="Bitta harf ochadi">Maslahat</button>
   </div>
 
   <div class="log" id="log"></div>

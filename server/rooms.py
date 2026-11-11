@@ -18,6 +18,8 @@ TOTAL_ROUNDS = 6
 ROUND_SECONDS = 60
 ROUND_GAP = 3            # raundlar orasidagi nafas: natijani ko'rish uchun
 GRACE_SECONDS = 30          # uzilgan o'yinchi joyi shuncha ushlab turiladi
+HINT_WINDOW = 10            # maslahat faqat oxirgi shuncha soniyada
+HINT_KEEP_HIDDEN = 2        # maslahat bilan ham shuncha harf yopiq qoladi
 DRAWER_POINTS = 50          # so'zi topilsa chizuvchiga
 MIN_GUESS_POINTS = 20
 MAX_GUESS_POINTS = 100
@@ -117,6 +119,7 @@ class Room:
         self.drawer_id = None
         self.word = None
         self.revealed = set()
+        self.hints_used = 0
         self.used_words = set()
         self.strokes = []
         self.deadline = None
@@ -186,6 +189,7 @@ class Room:
                                self.used_words, self.rng)
         self.used_words.add(self.word)
         self.revealed = set()
+        self.hints_used = 0
         self.strokes = []
         self.phase = DRAWING
         self.deadline = now + self.duration
@@ -222,6 +226,33 @@ class Room:
 
     def masked(self):
         return mask(self.word or "", self.revealed)
+
+    def hint_open(self, now):
+        """Maslahat tugmasi shu payt ishlaydimi."""
+        return (self.phase == DRAWING
+                and 0 < self.remaining(now) <= HINT_WINDOW)
+
+    def request_hint(self, user_id, now):
+        """Topuvchi so'raganda bitta harf ochadi, yangi niqobni qaytaradi.
+
+        Faqat oxirgi HINT_WINDOW soniyada ishlaydi. Raundning boshida
+        ochib bersa, o'yin topishga emas, kutishga aylanib qolardi --
+        chizuvchi hali rasmni tugatmasdan so'z ma'lum bo'lib qolardi.
+
+        Shart bajarilmasa None qaytaradi: klient tugmani yashirgan bo'lsa
+        ham, bu yerda qayta tekshiriladi.
+        """
+        if not self.hint_open(now):
+            return None
+        if user_id != self.guesser_id:
+            return None
+        positions = self._letter_positions()
+        hidden = [i for i in positions if i not in self.revealed]
+        if len(hidden) <= HINT_KEEP_HIDDEN:
+            return None                   # so'zni butunlay ochib yubormaymiz
+        self.revealed.add(self.rng.choice(hidden))
+        self.hints_used += 1
+        return self.masked()
 
     def submit_guess(self, user_id, text, now):
         """Topuvchining javobi. Natijani lug'at bo'lib qaytaradi."""
@@ -274,6 +305,7 @@ class Room:
         self.drawer_id = None
         self.word = None
         self.revealed = set()
+        self.hints_used = 0
         self.used_words = set()
         self.strokes = []
         self.deadline = None

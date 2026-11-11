@@ -15,7 +15,13 @@ const state = {
   ws: null, code: null, you: null, drawer: null, phase: "lobby",
   lang: "uz", strokes: [], color: "#302b24", penColor: "#302b24", width: 4,
   eraser: false, retries: 0, closing: false,
+  shape: "",                   // "" = erkin chizish, aks holda shakl nomi
 };
+
+// Serverdagi HINT_WINDOW bilan bir xil bo'lishi kerak. Tugmani shundan
+// oldin ko'rsatsak, server baribir rad etadi va foydalanuvchi sababini
+// tushunmay qoladi.
+const HINT_WINDOW = 10;
 
 const PAPER_INK = "#fffdf7";   // o'chirg'ich = qog'oz rangi bilan chizish
 
@@ -170,10 +176,22 @@ function handle(msg) {
 
     case "mask":
       if (state.you !== state.drawer) $("wordbar").textContent = msg.mask;
+      $("btn-hint").disabled = false;
+      break;
+
+    case "hint_denied":
+      // Server rad etdi -- masalan so'zda ochiladigan harf qolmagan.
+      $("btn-hint").disabled = false;
+      toast("Hozir maslahat berib bo'lmaydi");
       break;
 
     case "time":
       setTimer(msg.remaining);
+      // Maslahat faqat oxirida: raund boshida bersak, chizuvchi rasmni
+      // tugatmasdan so'z ma'lum bo'lib, o'yin qiziqligini yo'qotardi.
+      $("btn-hint").classList.toggle(
+        "hidden",
+        state.you === state.drawer || msg.remaining > HINT_WINDOW || msg.remaining <= 0);
       break;
 
     case "guess":
@@ -365,18 +383,55 @@ function canDraw() {
   return state.phase === "drawing" && state.you === state.drawer;
 }
 
+/* ----------------------------------------------------------------- shakllar */
+
+// Tayyor shakl ham oddiy nuqtalar ro'yxati bo'lib yuboriladi. Shuning
+// uchun na server, na boshqa o'yinchi shakllar haqida bilishi shart --
+// protokol umuman o'zgarmaydi va eski klient ham ularni ko'ra oladi.
+function shapePoints(kind, a, b) {
+  const [x0, y0] = a, [x1, y1] = b;
+  const mx = (x0 + x1) / 2;
+  if (kind === "line") return [a, b];
+  if (kind === "rect") return [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
+  if (kind === "tri") return [[mx, y0], [x1, y1], [x0, y1], [mx, y0]];
+  if (kind === "circle") {
+    const cy = (y0 + y1) / 2;
+    const rx = Math.abs(x1 - x0) / 2, ry = Math.abs(y1 - y0) / 2;
+    const pts = [];
+    for (let i = 0; i <= 48; i++) {
+      const t = (i / 48) * Math.PI * 2;
+      pts.push([mx + Math.cos(t) * rx, cy + Math.sin(t) * ry]);
+    }
+    return pts;
+  }
+  return [a, b];
+}
+
+let shapeFrom = null;
+
 canvas.addEventListener("pointerdown", (ev) => {
   if (!canDraw()) return;
   canvas.setPointerCapture(ev.pointerId);
   currentId += 1;
   sentUpTo = 0;
   const width = state.eraser ? state.width * 3 : state.width;
-  current = { id: state.you + ":" + currentId, c: state.color, w: width, p: [point(ev)] };
+  const p0 = point(ev);
+  current = { id: state.you + ":" + currentId, c: state.color, w: width, p: [p0] };
+  if (state.shape) { shapeFrom = p0; return; }   // ko'rinish pointermove da
   drawStroke(current);
 });
 
 canvas.addEventListener("pointermove", (ev) => {
   if (!current) return;
+  if (state.shape) {
+    // Shakl barmoq bilan birga o'sadi. Oldingi ko'rinishni o'chirish uchun
+    // butun canvas qayta chiziladi -- shakl hali yuborilmagani uchun
+    // state.strokes ga tegmaydi va boshqa o'yinchi uni ko'rmaydi.
+    current.p = shapePoints(state.shape, shapeFrom, point(ev));
+    redraw();
+    drawStroke(current);
+    return;
+  }
   current.p.push(point(ev));
   drawStroke({ c: current.c, w: current.w, p: current.p.slice(-2) });
   // Har `pointermove` da emas, 50ms da bir marta. Aks holda mobil
@@ -399,8 +454,19 @@ function endStroke() {
   if (!current) return;
   clearTimeout(flushTimer);
   flushTimer = null;
-  flush();
+  if (state.shape) {
+    // Shakl bitta butun bo'lak: bo'laklab yuborishning hojati yo'q.
+    if (current.p.length > 1) {
+      state.strokes.push(current);
+      sendMsg({ type: "stroke", stroke: current });
+    } else {
+      redraw();                  // bitta nuqta -- shakl yasalmadi, izi qolmasin
+    }
+  } else {
+    flush();
+  }
   current = null;
+  shapeFrom = null;
   sentUpTo = 0;
 }
 canvas.addEventListener("pointerup", endStroke);
@@ -442,6 +508,20 @@ document.querySelectorAll(".size").forEach((b) => {
 });
 
 $("btn-eraser").addEventListener("click", () => setEraser(!state.eraser));
+
+document.querySelectorAll(".shape").forEach((b) => {
+  b.addEventListener("click", () => {
+    state.shape = b.dataset.shape || "";
+    document.querySelectorAll(".shape")
+      .forEach((o) => o.classList.toggle("on", o === b));
+  });
+});
+
+$("btn-hint").addEventListener("click", () => {
+  if (state.you === state.drawer) return;
+  $("btn-hint").disabled = true;       // javob kelguncha qayta bosilmasin
+  sendMsg({ type: "hint" });
+});
 
 document.querySelectorAll(".lang").forEach((b) => {
   b.addEventListener("click", () => {

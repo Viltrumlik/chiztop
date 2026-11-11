@@ -308,6 +308,19 @@ async def handle(room, user_id, message):
                 room.start_round(time.time())
                 await broadcast_state(room)
 
+    elif kind == "hint":
+        # Klient tugmani faqat oxirgi 10 soniyada ko'rsatadi, lekin unga
+        # ishonmaymiz: shartni request_hint() ning o'zi qayta tekshiradi.
+        ws = SOCKETS.get(room.code, {}).get(user_id)
+        if ws is None:
+            return
+        masked = room.request_hint(user_id, time.time())
+        if masked is None:
+            await send(ws, {"type": "hint_denied"})
+        else:
+            # Faqat so'ragan odamga: chizuvchi so'zni allaqachon biladi.
+            await send(ws, {"type": "mask", "mask": masked})
+
     elif kind == "share":
         # Javob faqat so'ragan o'yinchiga ketadi, broadcast emas.
         ws = SOCKETS.get(room.code, {}).get(user_id)

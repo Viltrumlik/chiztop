@@ -179,6 +179,23 @@ canvas {
 .tool.on { border-color: var(--accent); color: var(--accent); }
 .tool + .tool { margin-left: 0; }
 
+.shapes { display: flex; gap: 5px; }
+.shape {
+  width: 34px; height: 34px; padding: 0;
+  font-size: 17px; line-height: 1; color: var(--ink);
+  background: transparent;
+  border: 2px solid var(--edge); border-radius: 10px;
+}
+.shape.on { border-color: var(--accent); color: var(--accent); }
+
+.hint {
+  padding: 10px 14px; font-size: 15px; font-weight: 600;
+  color: var(--accent); background: transparent;
+  border: 2px dashed var(--accent); border-radius: 12px;
+  white-space: nowrap;
+}
+.hint:disabled { opacity: .45; border-style: solid; }
+
 .guessbar { display: flex; gap: 8px; }
 .guessbar input {
   flex: 1; font: 17px/1 inherit; padding: 14px;
