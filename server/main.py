@@ -29,6 +29,10 @@ TICK_SECONDS = 0.5
 # o'zgarsa, shu qator ham, web/app.js dagi APP_LINK ham yangilanishi kerak.
 INVITE_LINK = os.environ.get("INVITE_LINK", "https://t.me/chiztop_bot/play")
 
+# Taklif kartasi shu manzildan olinadi. Telegram rasmni o'zi yuklab oladi,
+# ya'ni manzil tashqaridan ochiladigan bo'lishi shart.
+PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://chiz.viltrumlik.uz")
+
 INVITE_TEXT = {
     "uz": {"title": "Chiz va Top",
            "desc": "Ikki kishilik chizish va topish o'yini",
@@ -84,13 +88,22 @@ async def prepared_invite(user_id, code, lang="uz"):
     """
     if not BOT_TOKEN:
         return None
-    text = INVITE_TEXT.get(lang, INVITE_TEXT["uz"])
+    if lang not in INVITE_TEXT:
+        lang = "uz"
+    text = INVITE_TEXT[lang]
+    photo = "%s/invite-%s.jpg" % (PUBLIC_URL, lang)
+    # `photo` turi: xabar rasm bo'lib ketadi, matn esa caption bo'ladi.
+    # `article` da faqat matn ketardi va suhbatda juda quruq ko'rinardi.
     result = {
-        "type": "article",
+        "type": "photo",
         "id": "inv-%s" % code,
+        "photo_url": photo,
+        "thumbnail_url": photo,
+        "photo_width": 1280,
+        "photo_height": 720,
         "title": text["title"],
         "description": text["desc"],
-        "input_message_content": {"message_text": text["body"]},
+        "caption": text["body"],
         "reply_markup": {"inline_keyboard": [[
             {"text": text["button"],
              "url": "%s?startapp=%s" % (INVITE_LINK, code)},

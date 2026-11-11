@@ -215,6 +215,26 @@ def test_share_prepares_a_message_with_a_button(client, monkeypatch):
     assert button["url"].endswith("?startapp=" + code)
     assert button["text"]                      # bo'sh tugma bo'lmasin
 
+    # Xabar rasm bo'lib ketadi, quruq matn emas.
+    assert result["type"] == "photo"
+    assert result["photo_url"].endswith("/invite-uz.jpg")
+    assert result["thumbnail_url"]             # Telegram buni talab qiladi
+    assert result["caption"]
+
+
+def test_invite_card_exists_for_every_language():
+    """photo_url mavjud faylga ishora qilsin -- Telegram uni yuklab oladi,
+    topa olmasa butun taklif xabari yasalmay qoladi."""
+    import os
+
+    import server.main as main
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for lang in main.INVITE_TEXT:
+        path = os.path.join(root, "web", "invite-%s.jpg" % lang)
+        assert os.path.exists(path), "yo'q: %s (tools/make_invite.py)" % path
+        assert os.path.getsize(path) > 1024
+
 
 def test_share_reports_failure_instead_of_hanging(client, monkeypatch):
     """Telegram javob bermasa klient eski usulga tushishi kerak."""
