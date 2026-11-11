@@ -183,3 +183,49 @@ def test_a_rejoining_player_gets_the_drawing_back(client):
 
 def test_health_reports_the_room_count(client):
     assert client.get("/health").json()["ok"] is True
+
+
+# -- taklif tugmasi -------------------------------------------------------
+#
+# Telegram'ga haqiqiy so'rov yubormaymiz: _tg_call almashtiriladi. Shunday
+# qilib tugmaning ichidagi havola to'g'ri yasalayotgani ham tekshiriladi.
+
+def test_share_prepares_a_message_with_a_button(client, monkeypatch):
+    import json
+
+    import server.main as main
+
+    captured = {}
+
+    def fake_call(method, params):
+        captured["method"] = method
+        captured["params"] = params
+        return {"ok": True, "result": {"id": "prep-123"}}
+
+    monkeypatch.setattr(main, "_tg_call", fake_call)
+
+    with client.websocket_connect("/ws") as a:
+        code = join(a, 1)["code"]
+        a.send_json({"type": "share"})
+        assert until(a, "share_ready")["id"] == "prep-123"
+
+    assert captured["method"] == "savePreparedInlineMessage"
+    result = json.loads(captured["params"]["result"])
+    button = result["reply_markup"]["inline_keyboard"][0][0]
+    assert button["url"].endswith("?startapp=" + code)
+    assert button["text"]                      # bo'sh tugma bo'lmasin
+
+
+def test_share_reports_failure_instead_of_hanging(client, monkeypatch):
+    """Telegram javob bermasa klient eski usulga tushishi kerak."""
+    import server.main as main
+
+    def boom(method, params):
+        raise OSError("tarmoq yo'q")
+
+    monkeypatch.setattr(main, "_tg_call", boom)
+
+    with client.websocket_connect("/ws") as a:
+        join(a, 1)
+        a.send_json({"type": "share"})
+        assert until(a, "share_failed")["type"] == "share_failed"

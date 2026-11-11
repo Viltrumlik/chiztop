@@ -174,6 +174,21 @@ function handle(msg) {
       showCurtain(msg);
       break;
 
+    case "share_ready":
+      // Server Telegram'da tugmali xabar tayyorladi; endi chat tanlanadi.
+      try {
+        tg.shareMessage(msg.id, (sent) => {
+          if (sent) toast("Taklif yuborildi");
+        });
+      } catch (e) {
+        shareFallback();
+      }
+      break;
+
+    case "share_failed":
+      shareFallback();
+      break;
+
     case "error":
       toast(msg.error);
       break;
@@ -434,13 +449,26 @@ $("btn-new").addEventListener("click", () => {
   connect(null);
 });
 
-$("btn-share").addEventListener("click", () => {
+// Eski usul: havolani matn sifatida yuborish. Telegram uni link-preview
+// qilib ko'rsatadi -- kartochka chiroyli, lekin ichidagi "Launch" haqiqiy
+// tugma emas. Yangi klientlar uchun pastdagi shareMessage yo'li ishlatiladi.
+function shareFallback() {
   const link = roomLink();
   const text = "Chiz va Top o'ynaymizmi?";
   const share = "https://t.me/share/url?url=" + encodeURIComponent(link) +
                 "&text=" + encodeURIComponent(text);
   if (tg && tg.openTelegramLink) tg.openTelegramLink(share);
   else window.open(share, "_blank");
+}
+
+$("btn-share").addEventListener("click", () => {
+  // shareMessage Telegram 8.0 da paydo bo'lgan. Eski klientda yoki
+  // brauzerda sinaganda darhol eski usulga tushamiz.
+  const canShare = tg && typeof tg.shareMessage === "function" &&
+                   tg.isVersionAtLeast && tg.isVersionAtLeast("8.0") &&
+                   state.ws && state.ws.readyState === WebSocket.OPEN;
+  if (canShare) sendMsg({ type: "share" });
+  else shareFallback();
 });
 
 $("btn-copy").addEventListener("click", async () => {

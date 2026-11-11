@@ -5,8 +5,11 @@ Butun o'yin mantiqi rooms.py da; bu fayl faqat uzatish bilan shug'ullanadi.
 """
 
 import asyncio
+import json
 import os
 import time
+import urllib.parse
+import urllib.request
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -22,6 +25,25 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 DEV = os.environ.get("CHIZTOP_DEV") == "1"
 TICK_SECONDS = 0.5
 
+# Taklif tugmasi shu havolaga olib boradi. BotFather'dagi qisqa nom
+# o'zgarsa, shu qator ham, web/app.js dagi APP_LINK ham yangilanishi kerak.
+INVITE_LINK = os.environ.get("INVITE_LINK", "https://t.me/chiztop_bot/play")
+
+INVITE_TEXT = {
+    "uz": {"title": "Chiz va Top",
+           "desc": "Ikki kishilik chizish va topish o'yini",
+           "body": "Chiz va Top o'ynaymizmi?",
+           "button": "O'ynash"},
+    "en": {"title": "Draw & Guess",
+           "desc": "A two-player drawing and guessing game",
+           "body": "Fancy a game of Draw & Guess?",
+           "button": "Play"},
+    "ru": {"title": "Рисуй и угадай",
+           "desc": "Игра на двоих: рисуй и угадывай",
+           "body": "Сыграем в «Рисуй и угадай»?",
+           "button": "Играть"},
+}
+
 @asynccontextmanager
 async def lifespan(_app):
     """Yagona fon taymerini ishga tushiradi va to'xtatadi."""
@@ -36,6 +58,58 @@ app = FastAPI(title="chiztop", lifespan=lifespan)
 
 ROOMS = {}        # code -> Room
 SOCKETS = {}      # code -> {user_id: WebSocket}
+
+
+# -- taklif xabari --------------------------------------------------------
+
+def _tg_call(method, params):
+    """Telegram API ga so'rov. Bloklaydi -- faqat to_thread ichida chaqiriladi."""
+    data = urllib.parse.urlencode(params).encode()
+    req = urllib.request.Request(
+        "https://api.telegram.org/bot%s/%s" % (BOT_TOKEN, method), data=data)
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return json.loads(resp.read().decode())
+
+
+async def prepared_invite(user_id, code, lang="uz"):
+    """Tayyor taklif xabarini yasaydi va uning id sini qaytaradi.
+
+    Oddiy havola yuborilganda Telegram uni link-preview qilib ko'rsatadi --
+    kartochka ichidagi "Launch" tugma emas, shunchaki rasm bir qismi. Bu
+    yerda esa xabar inline_keyboard bilan oldindan tayyorlanadi, shuning
+    uchun qabul qiluvchi haqiqiy bosiladigan tugma ko'radi.
+
+    Klient qaytgan id ni Telegram.WebApp.shareMessage() ga beradi.
+    Muvaffaqiyatsiz bo'lsa None qaytadi va klient eski usulga tushadi.
+    """
+    if not BOT_TOKEN:
+        return None
+    text = INVITE_TEXT.get(lang, INVITE_TEXT["uz"])
+    result = {
+        "type": "article",
+        "id": "inv-%s" % code,
+        "title": text["title"],
+        "description": text["desc"],
+        "input_message_content": {"message_text": text["body"]},
+        "reply_markup": {"inline_keyboard": [[
+            {"text": text["button"],
+             "url": "%s?startapp=%s" % (INVITE_LINK, code)},
+        ]]},
+    }
+    try:
+        resp = await asyncio.to_thread(_tg_call, "savePreparedInlineMessage", {
+            "user_id": user_id,
+            "result": json.dumps(result, ensure_ascii=False),
+            "allow_user_chats": "true",
+            "allow_group_chats": "true",
+        })
+    except Exception as exc:                      # tarmoq, timeout, JSON
+        print("[share] %r" % exc)
+        return None
+    if not resp.get("ok"):
+        print("[share] %s" % resp.get("description"))
+        return None
+    return resp["result"]["id"]
 
 
 # -- uzatish --------------------------------------------------------------
@@ -220,6 +294,17 @@ async def handle(room, user_id, message):
             if room.can_start():
                 room.start_round(time.time())
                 await broadcast_state(room)
+
+    elif kind == "share":
+        # Javob faqat so'ragan o'yinchiga ketadi, broadcast emas.
+        ws = SOCKETS.get(room.code, {}).get(user_id)
+        if ws is None:
+            return
+        mid = await prepared_invite(user_id, room.code, room.lang)
+        if mid:
+            await send(ws, {"type": "share_ready", "id": mid})
+        else:
+            await send(ws, {"type": "share_failed"})
 
 
 # Statik fayllar oxirida ulanadi, aks holda /ws va /health ni bosib ketadi.
